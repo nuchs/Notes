@@ -1,40 +1,40 @@
-The Opinionated Coding Guide
+# The Opinionated CSharp Coding Guidelines
+
+## Introduction
 
 This guide is written based on the following assumptions 
 
-  That code is read far more often than it is written 
-  That it is harder to understand existing code than to write new code [1]
-  That complex code is much harder to understand than simple code
-  That the next person who has to understand what you've written is a 
-  trigger happy pyschopath with a shotgun and your home address [2]
+  - That code is read far more often than it is written 
+  - That the requirements for a project always change
+  - That the next person who has to understand what you've written is a trigger happy pyschopath with a shotgun and your home address <2>
 
 It therefore recommends a style of coding which prioritises readability (Or
 maybe more accurately understandability) over other factors such as ease of 
-writing or performance* 
+writing or [performance](#Premature optimisation  == Math.Sqrt(evil);)
 
-* See the section on premature optimisation
-
-Principles
+## Principles
 
 Software development is not a precise science and there are no rules which will
-guide you to the correct solution, there are a number of principles which can
-help you avoid making mistakes made by others who have gone before you.
+take you to the correct solution, there are however a number of principles 
+which can help you avoid making mistakes made by others who have gone before 
+you.
 
 It's worth noting that these are *principles* and not rules thus you need to
 exercise judgment in deciding when to apply them. That said they hold for most
 cases so if you decide to go against their recommendations make sure you
 understand the tradeoff you are making.
 
-SOLID [3]
+### SOLID <3>
 
 The SOLID principles for object oriented design
 
-Single Responsibility Principle
+**Single Responsibility Principle**
 
 A class should have a single responsibility (equivalently a class should only
 have one reason to change)
+Conjuctive
 
-Open/Closed Principle
+**Open/Closed Principle**
 
 Software entities should be open for extension but closed for modification.
 
@@ -43,20 +43,22 @@ grips with it but SLID doesn't seem as memorable as SOLID so here it is.
 
 My best understanding of this is that it suggests that you shoudl strive to
 keep published interfaces (small I) stable, even when you are adding new 
-functionality [4]. This may not directly relate to readability but is good
+functionality <4>. This may not directly relate to readability but is good
 advice non the less.
-Conjuctive
 
-Liskov Substitution Principle
-Interface Segregation Principle
-Dependency Inversion Principle
+**Liskov Substitution Principle**
+**Interface Segregation Principle**
+**Dependency Inversion Principle**
 
-YAGNI (You ain't gonna need it)
-DRY (Don't repeat yourself)
-DAMP (Descriptive And Meaningful Phrases)
-Tell don't ask (Or the Law of Demeter)
+###YAGNI (You ain't gonna need it)
 
-Principle of least surprise (or least astonishment)
+This principle states that you shouldn't implement something until you actually
+need to.
+###DRY (Don't repeat yourself)
+###DAMP (Descriptive And Meaningful Phrases)
+###Tell don't ask (Or the Law of Demeter)
+
+###Principle of least surprise (or astonishment)
 
 Simply put, a system should behave in the way its users expect e.g. if you 
 drag a file into the wastepaper on your desktop the operating system should 
@@ -65,22 +67,44 @@ delete the file and not email it to a national newspaper.
 Although most people encounter this principle in the context of UI design it is
 just as applicable when writing code. 
 
+```csharp
+void DoSomething (IDictionary<string, int> aDictionary)
+{
+  // Do some important work ...
+  PrintValue(aDictionary, "icecream");
+}
+```
+
+My expectation when I look at this code is that this method does some important
+work and then prints out the value assoicated with the key "icecream" in the
+provided dictionary.
+
+If it turns out that the implementation of PrintValue is actually:
+
+```csharp
 void PrintValue (IDictionary<string, int> aDictionary, string key)
 {
   Console.WriteLine("The value of " + key + " is " + aDictionary[key]);  
+  aDictionary.Remove(key);
 }
+```
 
-My expection when I see this code is that it will print the value associated
-with specified key in aDictionary, I would not expect the index access to also
-remove the key value pair from the dictionary. If this were the case then I
-would have a hard time making sense of the code until I worked this out.
+Then my expectation has been confounded and I am going to have a very hard time
+working out where all the values in my dictionary are going.
 
-This is complimented by the Single Responsibility Principle and Expressive
-Naming; code with a single purpose shouldn't have any unexpected side effects 
-premature optimisation  == Math.Sqrt(evil);
-Command/Query Segregation
-Immutability
+Two principles which support this one are
 
+- The [SRP] (Single Responsibility Principle), if a class or method only does one thing it is much less likely that it will be something unexpected
+- [Expressive Naming] means that you should be able understand what a class or method does just from the name
+
+###Expressive Naming
+###Premature optimisation  == Math.Sqrt(evil);
+###Command/Query Segregation
+###Immutability
+
+Pure functions, side effects idempotence
+Value types
+bad statics
 Practices
   TDD
   Pair Programming
@@ -126,11 +150,11 @@ Files
     your home address. Do not piss him off
 Code Smells
    "a code smell is a surface indication that usually corresponds to a deeper
-   problem in the system" [fowler]
+   problem in the system" <fowler>
   Comments
     A bit of a controversial one, it's no so much that the comments themselves
     are rather the fact that you need them to explain what the code is doing,
-    you could consider them deoderent [fowler]. Examples of comments which are
+    you could consider them deoderent <fowler>. Examples of comments which are
     fine are those describing the interface to something
     Avoid comments which describe what a line is doing they are just noise
     Write them using proper English
@@ -183,7 +207,7 @@ usings
     Now the compiler searches System before it searches outer and so finds the
     correct value. It's not a problem that's we're likely to encounter but it
     would be hellish to debug if we did so why ask for trouble.
-    [http://stackoverflow.com/questions/125319/should-using-statements-be-inside-or-outside-the-namespace]
+    <http://stackoverflow.com/questions/125319/should-using-statements-be-inside-or-outside-the-namespace>
   ordering
     
   remove unused
@@ -249,6 +273,11 @@ Unit Testing
 Code Reviews
 Continuous Integration
 Pair Programming
+Security
+  Validate input at trust boundries
+  white/black list
+  clense input
+  key management -its hard
 
 refs
 
