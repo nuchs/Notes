@@ -2,15 +2,14 @@
 
 ## Introduction
 
-This guide is written based on the following assumptions 
+This guide is written based on the following assumptions:
 
   - That code is read far more often than it is written 
   - That the requirements for a project always change
   - That the next person who has to understand what you've written is a trigger happy pyschopath with a shotgun and your home address <2>
 
-It therefore recommends a style of coding which prioritises readability (Or
-maybe more accurately understandability) over other factors such as ease of 
-writing or [performance](#Premature optimisation  == Math.Sqrt(evil);)
+It therefore recommends a style of coding which emphasizes ease of change and
+readability over other factors such as speed of writing or [performance](#Premature optimisation  == Math.Sqrt(evil);)
 
 ## Principles
 
@@ -53,8 +52,34 @@ advice non the less.
 ###YAGNI (You ain't gonna need it)
 
 This principle states that you shouldn't implement something until you actually
-need to.
+need it.
+
+The rationale behind this is that it is hard to guess what features will be
+needed in the future and how they should be built. Even if you do get it
+right you have spent time developing a feature which isn't required just now at
+the expense of developing a feature which is. Finally you've increased the
+complexity of your code without any short term gain (as the feature is not
+required at the moment) meaning that it will be harder to change and to
+understand.
+
+||Build Cost | Repair Cost | Carry Cost | Delay Cost
+--------------------------------------------------
+Wrong Feature|x||x|x
+Right Feature built wrong ||x|x|x
+Right feature built right |||x|x
+
+http://c2.com/cgi/wiki?YouArentGonnaNeedIt
+http://martinfowler.com/bliki/Yagni.html
+
+
 ###DRY (Don't repeat yourself)
+
+> Every piece of knowledge must have a single, unambiguous, authoritative representation within a system.
+
+The Pragmatic Programmer
+
+When this is true code is easier to change bec
+
 ###DAMP (Descriptive And Meaningful Phrases)
 ###Tell don't ask (Or the Law of Demeter)
 
@@ -98,7 +123,18 @@ Two principles which support this one are
 - [Expressive Naming] means that you should be able understand what a class or method does just from the name
 
 ###Expressive Naming
-###Premature optimisation  == Math.Sqrt(evil);
+###Premature optimisation == Math.Sqrt(evil);
+
+Optimising code is a trade off, you alter the code and sacrifice some aspect of
+its design in order to gain an increase in performance (either in time or
+space). For it to be beneficial the performance gain must be worth more than
+whatever was sacrificed.
+
+The most common sacrifice made is to increase the complexity of the code,
+consequently making it harder to understand and to change.
+
+Before making *any* optimisation, always, always measure
+
 ###Command/Query Segregation
 ###Immutability
 
