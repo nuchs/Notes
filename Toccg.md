@@ -33,7 +33,7 @@ high level overview of a number of them.
 
 It also makes the following assumptions
 
-  - That code is read far more often than it is written 
+  - That code is read far more often than it is written <1>
   - That the requirements for a project always change
   - That the next person who has to understand what you've written is a trigger happy pyschopath with a shotgun and your home address <2>
 
@@ -48,33 +48,167 @@ which can help you avoid making mistakes made by others who have gone before
 you.
 
 It's worth noting that these are *principles* and not rules thus you need to
-exercise judgment in deciding when to apply them. That said they hold for most
-cases so if you decide to go against their recommendations make sure you
-understand the tradeoff you are making.
+exercise judgment in deciding when to apply them (especially when they 
+contradict each other). That said they are good advice in most cases so if you 
+decide to go against their recommendations make sure you understand the 
+tradeoff you are making.
+
+### YAGNI (You ain't gonna need it)
+
+This principle states that you shouldn't implement something until you actually
+need it.
+
+The rationale behind this is that it is hard to guess what features will be
+needed in the future and how they should be built. 
+
+If you guess wrong then you've wasted time building something which won't be
+used and you've made the code base more complex unless you spend more time
+removing it.
+
+If you guess right but don't implement it correctly (say because the
+requirements haven't been bottomed out because the feature is not yet a
+priority) then you've spent time building something which isn't needed just now
+instead of building something which is. Your code base is now more complex and
+you will need to modify the code in the future to correct your mistake.
+
+If you guess right and you implement it correctly then you've still spent time
+on a feature which could have been spent on something else which is required.
+
+So whenever you feel the need to make the code more 'flexible' because you're
+sure that some feature will definitely be needed in the future stop for a
+second and think if it's actually worth it.
+
+### Abstraction
+
+Most programs are too complex for anyone to hold the whole thing in their head
+at the one time. We manage this by mentally structuring the code into a 
+hierarchy of concepts and only examining one level at a time e.g.
+
+1. When reasoning about a service which uses a notification system you think of
+   the notification system as a black box which is able deliver messages to 
+   recipients in the order they were received, you don't concern yourself with 
+   its implementation
+
+2. When examining the notification system you see that it uses a queue that
+   helps you to understand how the system works but you're not interested in
+   how the queue works
+
+3. When you start looking at the queue you see that it is implemented using a
+   singly linked list. At this point you don't care how the queue is used just
+   how it works.
+
+Each of these steps invoves looking at the system at a particular level of 
+abstraction. The key thing is that you ignore the details of everything at a
+different level, this helps us manage the inherent complexity of a program.
+
+Since this a key way in which we are able to understand a system it is
+important to design code in a way which supports our ability to form
+abstractions.
+
+**Single level of abstraction** <Uncle bob>
+
+In a single method all statements should be at the same level of abstraction
+otherwise you are requiring the reader to perform a context switch every time
+the level changes
+
+```csharp
+// This method uses two levels of abstraction for the first part it is looking
+// at how to validate particular part of a credit card while in the seond part 
+// it is looking at how to look if a credit card is valid
+public bool ValidateCreditCard(CreditCard card)
+{
+  var luhnNumbers = DoubleEveryOtherNumber(card.LongNumber); 
+  var sum = (from digit in luhnNumbers select digit).Sum();
+  var validNumber = (sum % 10) == 0;
+  
+  return validNumber &&
+         ValidStartDate(card.StartDate) &&
+         ValidSecurityNumber(card.SecurityNumber);
+}
+
+// Now everything is at the same level of abstraction
+public bool ValidateCreditCard(CreditCard card)
+{
+  return ValidateCreditCardNumber(card.LongCardNumber)  &&
+         ValidStartDate(card.StartDate) &&
+         ValidSecurityNumber(card.SecurityNumber);
+}
+
+private bool ValidateCreditCardNumber (int[] longCardNumber)
+{
+  var luhnNumbers = DoubleEveryOtherNumber(longNumber); 
+  var sum = (from digit in luhnNumbers select digit).Sum();
+  return (sum % 10) == 0;
+}
+```
+
+**The Composite should be simpler than sum of its parts** <growing software>
+
+For an abstraction to be useful it needs to reduce the number of things we need
+to think about otherwise as we move up the levels of abstraction the code will
+become progressively more difficult to understand which is contrary to the aim
+of abstraction.
+
+```csharp
+
+```
 
 ### SOLID <3>
 
-The SOLID principles for object oriented design
+SOLID is a mnemonic acronym for five design principles which when followed are
+intended to help a developer write code which is easier to understand and
+maintain. The five principles are
 
-**Single Responsibility Principle**
+- **S**ingle responsibility principle
+- **O**pen/closed principle
+- **L**iskov substitution principle
+- **I**nterface segregation principle
+- **D**ependency inversion principle
 
-A class should have a single responsibility (equivalently a class should only
-have one reason to change)
-Conjuctive
+They are described below.
 
-**Open/Closed Principle**
+**Single Responsibility Principle (SRP)**
 
-Software entities should be open for extension but closed for modification.
+This principle states that a class should conceptually be responsible for one
+thing
 
-I have to admit I was tempted to omit this one as I've never fully got to
-grips with it but SLID doesn't seem as memorable as SOLID so here it is.
+Following this principle provides a number of advantages
 
-My best understanding of this is that it suggests that you shoudl strive to
-keep published interfaces (small I) stable, even when you are adding new 
-functionality <4>. This may not directly relate to readability but is good
-advice non the less.
+- Because classes are focused on only doing one thing they become much easier
+  to reuse. This has a further benefit in that if code is reused it becomes
+  easier to update the system as there are less places where changes need to be
+  applied
+- Classes tend to be shorter and thus are easier to understand (less to read
+  usually means less to think about).
+- Classes are also easier to work with because there is only one concept you
+  need to wrap your head around. Every part of the class should contribute to
+  your understanding of that concept.
+- Classes become easier to change. If a class has more than one responsibility the implementation of these responsibilites are often entangled (If they were clearly segregated then the class would probably have been split up already). This means when one responsibility changes the other will be affected. If a class has a single responsibility this problem is side stepped entirely.
 
-**Liskov Substitution Principle**
+The SRP can also be applied to methods and many of the same benefits apply.
+
+There is a certain amount of subjectivity in deciding how to apply this
+principle; one person's single responsibility is another person's multiple. A
+good rule of thumb when trying to work this out is to see if you describe what
+a class does without using any conjuctives ('and', 'or') <growing software>
+
+**Open/Closed Principle (OCP)**
+
+The principel as stated is
+
+> Software entities should be open for extension but closed for modification.
+
+new behaviour can be added
+code should not be changed
+This can be achieved by having the entities depend on abstractions rather than
+implementations. As long as the interface remains stable no change will be
+required
+In effect the abstraction acts as a barrier to changes propegating through the
+code.
+100% closure is not feasible thus should be an ideal to strive for
+
+
+**Liskov Substitution Principle (LSP)**
 
 Intuatively this principle states that calling code shouldn't have to care if
 its operating on a particular class or a descendent of that class. This is a
@@ -153,7 +287,7 @@ To avoid falling foul of situations like this the LSP states that:
 When designing a class hierarchy, if you can't meet these conditions then you
 need to question whether inheritance is the right tool for the job.
 
-**Interface Segregation Principle**
+**Interface Segregation Principle (ISP)**
 
 A client should not be forced to depend on methods that it doesn't use.
 
@@ -194,8 +328,8 @@ In the above example the IThingDoer clearly violates this principle, the
 PrintQueue is now coupled (albeit loosly) to the Bet and Dish classes. This
 means changes which should not affect this class in the slightest will now
 require it to be rebuilt. In the case of a small class this might seem trivial
-but this can (and does) build up and will create situations where libraries are
-having to be redeployed even though they have functionaly not changed.
+but this can (and does) create situations where libraries are having to be 
+redeployed even though they have functionaly not changed.
 
 On a simpler note it also means that the interface takes longer to read and you
 can't build up a coherant picture of what it's purpose is because there isn't
@@ -222,7 +356,7 @@ interface IDishWasher
 }
 ```
 
-**Dependency Inversion Principle**
+**Dependency Inversion Principle (DIP)**
 
 >A. High-level modules should not depend on low-level modules. Both should depend on abstractions.
 >B. Abstractions should not depend on details. Details should depend on abstractions.
@@ -247,25 +381,7 @@ higher level module to begin with as this helps hide the implementation details
 for the layer. If you need to reuse the lower layer then the interface can be
 moved out into its own module and both layers will depend on that.
 
-###YAGNI (You ain't gonna need it)
-
-This principle states that you shouldn't implement something until you actually
-need it.
-
-The rationale behind this is that it is hard to guess what features will be
-needed in the future and how they should be built. Even if you do get it
-right you have spent time developing a feature which isn't required just now at
-the expense of developing a feature which is. Finally you've increased the
-complexity of your code without any short term gain (as the feature is not
-required at the moment) meaning that it will be harder to change and to
-understand.
-
-
-http://c2.com/cgi/wiki?YouArentGonnaNeedIt
-http://martinfowler.com/bliki/Yagni.html
-
-
-###DRY (Don't repeat yourself)
+### DRY (Don't repeat yourself)
 
 > Every piece of knowledge must have a single, unambiguous, authoritative representation within a system.
 
@@ -273,10 +389,14 @@ The Pragmatic Programmer
 
 When this is true code is easier to change bec
 
-###DAMP (Descriptive And Meaningful Phrases)
-###Tell don't ask (Or the Law of Demeter)
+### DAMP (Descriptive And Meaningful Phrases)
+### Tell don't ask (And the Law of Demeter)
 
-###Principle of least surprise (or astonishment)
+The Tell don't ask principle states that you should tell objects what to do not
+ask them for data and take actions based on it. 
+https://pragprog.com/articles/tell-dont-ask
+
+### Principle of least surprise (or astonishment)
 
 Simply put, a system should behave in the way its users expect e.g. if you 
 drag a file into the wastepaper on your desktop the operating system should 
@@ -315,10 +435,10 @@ Two principles which support this one are
 - The [SRP] (Single Responsibility Principle), if a class or method only does one thing it is much less likely that it will be something unexpected
 - [Expressive Naming] means that you should be able understand what a class or method does just from the name
 
-###Expressive Naming
+### Expressive Naming
 
 
-###Premature optimisation == Math.Sqrt(evil);
+### Premature optimisation == Math.Sqrt(evil);
 
 Optimising code is a trade off, you alter the code and sacrifice some aspect of
 its design in order to gain an increase in performance (either in time or
@@ -355,14 +475,14 @@ violations of the [Principle of least surprise] as a query should never have
 unxpected side effects (otherwise it wouldn't be a query) which in turn makes
 the code easier to reason about.
 
-###Immutability
+### Immutability
 Value types
 pure functions idempotent
 
-###Inheritance
+### Inheritance
     prefer composition
     design for it or prohibit
-###Security
+### Security
   Validate input at trust boundries
   white/black list
   clense input
@@ -503,7 +623,6 @@ Classes
   LSP
 Methods
   Tell don't ask
-  Single Responsibility
   Express intention (don't optimise prematurely)
   length
   Don't change parameters
@@ -524,7 +643,8 @@ Exceptions
 These references are where I came across a particular idea and are not
 necessarily the idea's origin 
 
-1 http://www.joelonsoftware.com/articles/fog0000000069.html
+1 http://blog.codinghorror.com/when-understanding-means-rewriting/
 2 http://blog.codinghorror.com/coding-for-violent-psychopaths/
 3 Clean Code Uncle Bob
 4 http://codeblog.jonskeet.uk/2013/03/15/the-open-closed-principle-in-review/
+5 uncle bob open closed princple article
