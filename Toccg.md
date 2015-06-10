@@ -82,26 +82,25 @@ second and think if it's actually worth it.
 
 Most programs are too complex for anyone to hold the whole thing in their head
 at the one time. We manage this by mentally structuring the code into a 
-hierarchy of concepts and only examining one level at a time e.g.
+hierarchy of abstractions and only examining one level at a time e.g.
 
 1. When reasoning about a service which uses a notification system you think of
    the notification system as a black box which is able deliver messages to 
-   recipients in the order they were received, you don't concern yourself with 
-   its implementation
+   recipients you don't concern yourself with its implementation.
 
-2. When examining the notification system you see that it uses a queue that
+2. If you examine the notification system you see that it uses a queue that
    helps you to understand how the system works but you're not interested in
    how the queue works
 
-3. When you start looking at the queue you see that it is implemented using a
-   singly linked list. At this point you don't care how the queue is used just
-   how it works.
+3. If you then look at the queue you see that it is implemented using a singly
+   linked list. At this point you don't care how the queue is used just how it
+   works.
 
-Each of these steps invoves looking at the system at a particular level of 
+Each of these steps involves looking at the system at a particular level of 
 abstraction. The key thing is that you ignore the details of everything at a
 different level, this helps us manage the inherent complexity of a program.
 
-Since this a key way in which we are able to understand a system it is
+Since this is a key way in which we are able to understand a system it is
 important to design code in a way which supports our ability to form
 abstractions.
 
@@ -142,16 +141,34 @@ private bool ValidateCreditCardNumber (int[] longCardNumber)
 }
 ```
 
-**The Composite should be simpler than sum of its parts** <growing software>
+**Abstractions shouldn't leak (much<6>)**
 
-For an abstraction to be useful it needs to reduce the number of things we need
-to think about otherwise as we move up the levels of abstraction the code will
-become progressively more difficult to understand which is contrary to the aim
-of abstraction.
+An abstraction is said to be leaky if it reveals some of the implementation
+details of the thing it is supposed to be hiding
 
 ```csharp
-
+interface IEmailManager
+{
+  void SendEmail(FileInfo email); 
+  List<FileInfo> GetMail();
+}
 ```
+
+The above interface provides an abstration to hide the details of an email
+system. It lets the client focus on the two behaviours it's interested in,
+sending and receiving emails. The problem is that it's apparant from the return
+and parameter types that the emails are being stored on disk. This is irrelvant
+to the client, it is an implementation detail that has leaked through the
+abstraction.
+
+The reason this is bad is that the client is now coupled to the implemenation
+of the thing being abstracted. In this case if you wanted to change the email
+manager so that it stored the emails on a database you would need to update all
+of the clients too.
+
+When designing interfaces (small i) care should be taken to prevent it from
+leaking. The better you do at this, the better your abstraction will be and
+thus it will be easier for readers to understand your code.
 
 ### SOLID <3>
 
@@ -198,15 +215,84 @@ The principel as stated is
 
 > Software entities should be open for extension but closed for modification.
 
-new behaviour can be added
-code should not be changed
-This can be achieved by having the entities depend on abstractions rather than
-implementations. As long as the interface remains stable no change will be
-required
-In effect the abstraction acts as a barrier to changes propegating through the
-code.
-100% closure is not feasible thus should be an ideal to strive for
+In this context open can be interpreted to mean 'will accept changes of the
+specified type' and closed means the opposite. Thus the open closed principle
+recommends that it should be able to add new behaviour to a particular entity
+without modifying it. 
 
+On first reading this sounds impossible but it is actually quite straight
+forward, as long as the software entity depends on a abstraction 
+
+```csharp
+// In this first implementation CookedBreakfast depends on the concrete class
+// Fryer to cook the breakfast. If we decide that we'd rather start grilling
+// our food then we need to change its implementation, thus this class does not
+// follow the open closed principle
+class CookedBreakfast
+{
+  public CookedBreakfast()
+  {
+    fryer = new Fryer();
+  }
+
+  public Cook(List<Food> ingrediants)
+  {
+    fryer.Cook(ingrediants);
+  }
+  
+  private Fryer fryer;
+}
+
+// In the second implementation CookedBreakfast now depends on the ICook
+// abstraction. If we need to switch from a Fryer to a Griller then we just
+// need to construct a new instance with a Griller object. Thus we are able to
+// change its behaviour without modifying the class, thus this class does
+// follow the open closed principle
+class CookedBreakfast
+{
+  public CookedBreakfast(ICook cooker)
+  {
+    this.cooker = cooker;
+  }
+
+  public Cook(List<Food> ingrediants)
+  {
+    cooker.Cook(ingrediants);
+  }
+  
+  private ICook cooker;
+}
+
+class Fryer : ICook 
+{
+  //implementation
+}
+
+class Griller : ICook 
+{
+  //implementation
+}
+```
+
+By consistantly using abstractions to mediate communications between software 
+entities (Such as using the ICook interface to mediate between the
+CookedBreakfast and Fryer classes) you create code in which the entities are
+all isolated from each other. This has two main advantages
+
+1. Your code becomes easier to understand because you can reason about a
+   particular block without having to understand the parts that it depends on
+2. The abstractions act as a firewall to change, preventing a change to one
+   part of a system rippling out and requiring other parts to also change. This
+   makes the code easier to maintain.
+
+A little thought should show that it is not possible to close a system
+completely, however you design the system there will always be some change
+which can not be effected through the existing abstractions. Therefore this
+principle should be applied at places where change is occurring/ is likely to
+occur (Be careful of falling foul of YAGNI though).
+
+Generally speaking you should apply it at the boundaries of large software
+components to begin with e.g.
 
 **Liskov Substitution Principle (LSP)**
 
@@ -643,8 +729,9 @@ Exceptions
 These references are where I came across a particular idea and are not
 necessarily the idea's origin 
 
-1 http://blog.codinghorror.com/when-understanding-means-rewriting/
-2 http://blog.codinghorror.com/coding-for-violent-psychopaths/
-3 Clean Code Uncle Bob
-4 http://codeblog.jonskeet.uk/2013/03/15/the-open-closed-principle-in-review/
-5 uncle bob open closed princple article
+1. http://blog.codinghorror.com/when-understanding-means-rewriting/
+2. http://blog.codinghorror.com/coding-for-violent-psychopaths/
+3. Clean Code Uncle Bob
+4. http://codeblog.jonskeet.uk/2013/03/15/the-open-closed-principle-in-review/
+5. uncle bob open closed princple article
+6. http://www.joelonsoftware.com/articles/LeakyAbstractions.html
