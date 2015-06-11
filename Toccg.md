@@ -285,15 +285,6 @@ all isolated from each other. This has two main advantages
    part of a system rippling out and requiring other parts to also change. This
    makes the code easier to maintain.
 
-A little thought should show that it is not possible to close a system
-completely, however you design the system there will always be some change
-which can not be effected through the existing abstractions. Therefore this
-principle should be applied at places where change is occurring/ is likely to
-occur (Be careful of falling foul of YAGNI though).
-
-Generally speaking you should apply it at the boundaries of large software
-components to begin with e.g.
-
 **Liskov Substitution Principle (LSP)**
 
 Intuatively this principle states that calling code shouldn't have to care if
@@ -471,16 +462,203 @@ moved out into its own module and both layers will depend on that.
 
 > Every piece of knowledge must have a single, unambiguous, authoritative representation within a system.
 
-The Pragmatic Programmer
+One of the key reasons is to do with change. If you have mutiple
+representations of something and you need to change that thing then you have to
+update *all* of the representation, otherwise Bad Things will happen.
 
-When this is true code is easier to change bec
+An example of an update error in database caused by duplication.
 
-### DAMP (Descriptive And Meaningful Phrases)
+---------------------------------------
+EmployeeId | Address      | Description
+---------------------------------------
+0001       | 1 Big Road   | Wage
+---------------------------------------
+0002       | 2 Big Road   | Wage
+---------------------------------------
+0002       | 4 Small Road | Bonus
+---------------------------------------
+
+Here there are multiple represntations of employee 0002's address in the pay
+table and one of them hasn't been updated which is going to cause some problems
+with their pay packet this month. The relational database normal forms exist 
+precisely to prevent this sort of duplication.
+
+In code update errors will usually result in bugs. Take for example FooBar inc.
+who calculates important metrics related to Foo and Bar as follows.
+
+```csharp
+double AverageFoo (List<Foo> foos)
+{
+  double sum = 0.0;
+  foreach (var foo in foos)
+  {
+    // Do some complicated stuff related to foo
+    sum += fooAmount;
+  }
+
+  return sum / foos.Length;
+}
+
+double AverageBar (List<Bar> bars)
+{
+  double sum = 0.0;
+  foreach (var Bar in bars)
+  {
+    // Do some complicated stuff related to bar
+    sum += barAmount;
+  }
+
+  return sum / bars.Length;
+}
+```
+
+For the metrics to be meaningful the averages for Foo and Bar must be
+calculated in the same way. Suppose now FooBar inc decide that the median would
+be a more useful way to caculate the average and so update their code as
+follows.
+
+```csharp
+double AverageFoo (List<Foo> foos)
+{
+  // Do some complicated stuff related to foo
+  int midPoint = // work out midpoint
+
+  return foos[midPoint];
+}
+
+double AverageBar (List<Bar> bars)
+{
+  double sum = 0.0;
+  foreach (var Bar in bars)
+  {
+    // Do some complicated stuff related to bar
+    sum += barAmount;
+  }
+
+  return sum / bars.Length;
+}
+```
+
+Now there is a bug in their code because the developers didn't realise the 
+average calculation happened in more than one place.
+
+Duplication is often a hint that there is a class or method waiting to be born.
+The new entity will act as the authoritative representation of the duplicated
+concept and be used in place of instances where the duplication occurs. So to
+continue our example.
+
+```csharp
+double AverageFoo (List<Foo> foos)
+{
+  // Do some complicated stuff related to foo
+
+  return CalculateAverge(fooValues);
+}
+
+double AverageBar (List<Bar> bars)
+{
+  // Do some complicated stuff related to bar
+
+  return CalculateAverge(barValues);
+}
+
+double CalculateAverge (List<double> values)
+{
+  double sum = 0.0;
+  foreach (var value in values)
+  {
+    sum += value;
+  }
+
+  return sum / values.Length;
+}
+```
+
+Comments describing what code is doing are another example; it is not
+uncommon in code bases which have been around for a while to see comments which
+bear no relation to the code. While this may not be as serious as invalidate
+the data in db or introducing a bug it does make code much harder to
+understand.
+
+To sum up, duplication is bad; don't do it, and remove it where you find it.
+
+<The Pragmatic Programmer>
+
+### DAMP (Descriptive And Meaningful Phrases) <jay fields>
+
+The DAMP principle is applicable to unit tests and it suggests that when
+writing tests it is more important for the code to 
+
 ### Tell don't ask (And the Law of Demeter)
 
-The Tell don't ask principle states that you should tell objects what to do not
+The "Tell don't ask" principle states that you should tell objects what to do not
 ask them for data and take actions based on it. 
+
+```csharp
+// Here we ask the object numbers for a part of its internal represntation
+// and perform an operation on it.
+public Ask (SomeNumbers numbers)
+{
+  int[] numbers = someNumbers.getTheNumbers();
+
+  for (int i = 0; i < numbers.Length; i++)
+  {
+     numbers[i] = numbers[i] * 2;
+  }
+}
+
+// Here we tell the numbers object what we want done but we let it handle doing
+// actual work.
+public Tell (SomeNumbers numbers)
+{
+  numbers.ForEach(x => x *2);
+}
+```
+
+The difference between these two methods is that if we need to change how
+SomeNumbers stores it's collection of numbers it will be simpler to do in the
+latter case. This is because in Ask method has become coupled to implementation
+of the SomeNumber class.
+
+The aim of this principle therefore is to reduce coupling between classes
+thus making the system easier to change. 
+
+"The Law of Demeter" which is an alternative formulation of "Tell don't ask"
+provides a simple set of rules to follow
+
+A method "M" of an object "O" should invoke only the the methods of the
+following kinds of objects:
+
+1. Itself
+2. Its parameters
+3. Any objects it creates/instantiates
+4. Its direct component objects 
+
+```csharp
+class LoD
+{
+  Component thingy
+
+  public void Rule1()
+  {
+  }
+
+  public void Rule1()
+  {
+  }
+
+  public void Rule1()
+  {
+  }
+
+  public void Rule1()
+  {
+  }
+}
+```
+
 https://pragprog.com/articles/tell-dont-ask
+http://www.bradapp.com/docs/demeter-intro.html
 
 ### Principle of least surprise (or astonishment)
 
@@ -563,6 +741,7 @@ the code easier to reason about.
 
 ### Immutability
 Value types
+aliasing
 pure functions idempotent
 
 ### Inheritance
