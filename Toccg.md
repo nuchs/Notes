@@ -584,11 +584,6 @@ To sum up, duplication is bad; don't do it, and remove it where you find it.
 
 <The Pragmatic Programmer>
 
-### DAMP (Descriptive And Meaningful Phrases) <jay fields>
-
-The DAMP principle is applicable to unit tests and it suggests that when
-writing tests it is more important for the code to 
-
 ### Tell don't ask (And the Law of Demeter)
 
 The "Tell don't ask" principle states that you should tell objects what to do not
@@ -639,20 +634,30 @@ class LoD
 {
   Component thingy
 
-  public void Rule1()
+  public Lod (Component aThingy)
   {
+    thingy = aThingy;
   }
 
   public void Rule1()
   {
+    this.Rule2();
   }
 
-  public void Rule1()
+  public void Rule2(Thing thing)
   {
+    thing.DoSomething
   }
 
-  public void Rule1()
+  public void Rule3()
   {
+    var thing = new Thing();
+    thing.DoSomething();
+  }
+
+  public void Rule4()
+  {
+    thingy.DoSomething();
   }
 }
 ```
@@ -701,6 +706,43 @@ Two principles which support this one are
 
 ### Expressive Naming
 
+In some senses giving a good name to a software entity is one of the most
+important things we do when programming. A good name can make the purpose of an
+entity immediately apparant wheras a bad name can obscure it or in the worst
+case can completely mislead you.
+
+Most people recognise that single character names are a Bad Thing except in
+certain well defined situations where convention makes it clear what the
+purpose of the variable is (for example using 'i' as the index in a for
+loop). However it is still common to use cryptic names and abbreviations which
+probably on make sense to the developer and even then only at the time of
+writing. In essence you are trading clarity for brevity (dhh).
+
+```csharp
+// Admittedly I haven't seen code like this since at least 2007 but it 
+// emphisizes the point
+public void la (UID i, PWA pa)
+{
+  var u = gu(i);
+  var p = dc(u.ep);
+
+  if (pa == p)
+  {
+    l(user);
+  }
+}
+
+// And the same code written more expressively
+public void AttemptLogin (UserId id, Password passwordAttempt)
+{
+  var user = GetUserWith(id);
+  var password = Decrypt(user.EncryptedPassword);
+  if (passwordAttempt.Matches(password))
+  {
+    Login(user);
+  }
+}
+```
 
 ### Premature optimisation == Math.Sqrt(evil);
 
@@ -740,21 +782,159 @@ unxpected side effects (otherwise it wouldn't be a query) which in turn makes
 the code easier to reason about.
 
 ### Immutability
-Value types
+
+Immutable types are,as their name suggest types whose state doesn't change
+after they have been created. The advantage of this is that it is much easier
+to reason about the behaviour of immutable objects as the behaviour does not
+vary with time.
+
+A somewhat silly example, consider two balls, the first is red and the second
+changes colour depending on the time of the day. Which one is it easier to work
+out the colour of?
+
+Another advantage of immutable types is that they are safe to share between
+threads as there are no synchronisation issues; they have the same state
+whenever they are used.
+
+Thus when programming it is worth examining if a type really needs to change or
+not. A rule of thumb is that if the identity of the object is irrelevant then
+it should be immutable e.g. even if two people have the same name they are
+different people so their identity matters whereas two integers with the same
+value are interchangeable hence their identity does not matter.
 aliasing
-pure functions idempotent
 
 ### Inheritance
     prefer composition
     design for it or prohibit
+    (GOF, Joshua Bloch)
+
 ### Security
-  Validate input at trust boundries
-  white/black list
-  clense input
-  key management -its hard
+
+Writing secure code is a massive topic which far exceeds the scope of this
+guide. The following are just a handful of guidelines which when followed will 
+help make you less likely to make the most obvious mistakes.
+
+**Don't give away a free lunch**
+
+Make sure you have an error handling strategy in place, stack traces should not
+be reaching the users. Apart from the fact this makes for a poor user
+experience it is also giving away information about the internal structure of
+your system.
+
+For the sake of a catch statement why make it any easier for potential
+attackers?.
+
+**Validate input at trust boundries**
+
+Any data received from outside the system should be treated as suspect, whether
+that's something a user has typed in, a request from an external system or an
+event from a third party framework you're using. 
+
+Any suspect data should be tested to make sure that it is valid and doesn't 
+contain any nasty surprises
+
+There are various techniques you can use when validating input, some of the
+more common ones are:
+
+1. Black List - specifically block known bad inputs
+2. White List - Only allow known good inputs
+3. Process input data in a way that any control statements embedded in the
+   data are treated as data and not commands e.g. when with SQL use
+   placeholders rather than creating query strings through concatenation e.g
+   the following two statements will handle the input 
+
+   > "bob"); DROP TABLE users; --"
+
+   very differently.
+
+```sql
+INSERT INTO users (name) VALUES (?);
+```
+
+```csharp
+var query = "INSERT INTO users (name) VALUES (" + name + ");"
+```
+
+**Be careful with temporary files**
+
+If other users have write access to the directory the temporary file is being
+written to they can attempt to create their own file with the same name into
+the gap between when your file is created and written. This would let them see
+the contents of your file or alternatively act as a way of injecting data into
+your system.
+
+On a simpler level you should consider any data written to a tempoary file as
+exposed to anyone with read access to file.
+
+**Be careful what you log**
+
+Don't write sensitive data to the log file. This one is painfully obvious but
+I've seen more credit card numbers and passwords written in the clear than I
+care to think about
+
+**Use the lowest privelge level you can**
+
+Assume that your system will be compromised. If you limit what it can do to
+what it actually needs to do then you minimise the amount of damage that can
+occur when the compromise occurs.
+
+### Globals are bad
+
+violate open close
+encourage cascade of changes
+couple everything together
+are a bugger to test
+statics
+singletons
+
 ##Techniques
-  Refactoring
-  Unit Testing
+
+### Refactoring
+
+### Unit Testing
+
+#### DAMP (Descriptive And Maintainable Procedures) <jay fields>
+
+DRY is a useful principle when dealing with production code but it needs to be
+applied with care when writing test code. 
+
+One of the key principles when writing tests is that they should be 
+[independent](independent tests link) of each other, indiscriminatly applying
+DRY will result in code from multiple tests being extracted behind a common
+abstraction, thus coupling them together. Sometimes this is harmless but
+sometimes it can cause the tests to interfere with each other, this makes the
+tests both harder to maintain as a change to one can cause an unexpected
+failure in another.
+
+A second reason is that a unit test is supposed to describe a single piece of
+behaviour and how it can fail. If the test does fail then ideally you should be
+able to look at it and, independent of its surroundings, understand what has
+gone wrong.
+
+```csharp
+[Test]
+public void aThingShouldDoThis ()
+{
+  runTest(x => x.DoThis());
+}
+
+[Test]
+public void aThingShouldDoThat ()
+{
+  runTest(x => x.DoThat());
+}
+
+[Test]
+public void aThingShouldDoTheOther ()
+{
+  runTest(x => x.DoTheOther());
+}
+```
+
+The above example is somewhat extreme of how over applying DRY (Although based on real 
+code), after a certain point the test methods stop carrying any useful
+information 
+
     Triple A
     mocks
     test first
@@ -769,7 +949,7 @@ pure functions idempotent
   Pair Programming
   Continuous Integration
   Code Reviews
-##Code Smells
+## Code Smells
 Code Smells
    "a code smell is a surface indication that usually corresponds to a deeper
    problem in the system" <fowler>
@@ -783,91 +963,194 @@ Code Smells
     Write the comment you would like to read if you were someone else
   Long class
   Long Method
-##Style
-bad statics
-Practices
-Inner classes, avoid except in tests
-Files
-  naming
-    descriptive
-    camelCase for variables
-    PascalCase for everything else
-    no underscore
-    no all caps
-    no hungarian
-    avoid prefixes or suffixes like _ m_
-  Braces
-    new line
-    never optional
-  Enum
-    singular name for type
-    Do no add enu as a suffix (Hungarian notation)
-  spaces vs tabs
-    The most important thing is to be consistent, if you mix them and someone
-    has a different setting for the tab width the code will look messed up. 
-    Since this is a greenfield project we'll use spaces the primary reason for
-    this it is far to easy to add a space to a tab indented file and make a
-    mess whereas you can configure your ide to replace tabs with spaces and
-    thus can avoid the converse problem.
-  Indent Size
-    Four characters. Personally I prefer two but four seems to be the standard
-    here and consistancy is the most important thing
-  line length
-    You should strive to keep your lines under 80 characters, yes the ide can
-    cope with more easily but you'd be surprised at where you have to look at
-    your code (in a browser, in a text editor, when printed, in a terminal). 
-    Life is just easier if you try to stick to this, however if it will really 
-    impact the readability of the file then this isn't mandatory
-usings
-  within namespace
-    there is a subtle bug which can occur if you declare usings outside of a
-    namespace 
+## Style
 
-    // File1.cs
-    using System;
-    namespace Outer.Inner
+There are lots of different styles of writing code and generally their aim is
+all the same, to make the code as clear and easy to read as possible. There is
+a lot of disagreement over what is the best way to do that but in the end
+people can get used to just about any sensible style.
+
+Thus the prime style directive is: be consistent
+
+If the style keeps changing then you are forcing the user to think about the
+style of the code rather than the code itself.
+
+Thus whereas the first part of this document provides guidelines on how code
+should be structured the following are rules which must be followed to ensure
+that everyone in the team is producing code with a consistant style.
+
+### General
+
+**Spaces vs tabs**
+
+The arguments over which is better can reach nearly religious proportions and
+about the only thing people can ever agree with is that mixing the two is bad
+as it will mess up the formatting.
+
+Rule: For greenfield projetcs use spaces (You can configure your IDE to replace
+tabs with spaces). For existing projects consistency is more important so use
+whatever is already in use.
+
+**Indent Size**
+
+*Rule*: Indent size will be set to 4 spaces, this is to be consistent with the
+style used in our libraries.
+
+**Brace Style**
+
+*Rule*: Braces should appear on a new line, this is to be consistent with the
+style used in our libraries
+
+e.g.
+
+void MyFunc ()
+{
+}
+
+rather than
+
+void MyFunc () {
+}
+
+*Rule*: Braces are never optional, this prevents errors when extra statements are
+added to a control block.
+
+// Not allowed
+if (statement)
+  DoSomthing();
+
+// Do it this way
+if (statement)
+{
+  DoSomething();
+}
+
+**Naming**
+
+*Rule*: unless stated differently in another rule all names should be in
+PascalCase
+*Rule*: do not use underscore in names
+*Rule*: do not use all caps names for constants
+
+This is to be consistant with the Microsoft naming conventions used in the C# 
+libraries.
+
+### Files
+
+**Contents and Name**
+
+People expect to find the definition of a class/interface/enum in a file with
+the same name, thus by the principle of least surprise:
+
+*Rule*: Each file should contain one public class/interface/enum
+*Rule*: Each file should be named after the public entity it contains
+
+**Line Length**
+
+Modern monitors have no issue with displaying long lines so suggesting a cap on
+line length may seem archaic but you don't always know where you will need to
+view the code (In a browser, in a remote shell, on a print out etc) and
+restricting yourself to 80 characters will make it display correctly in most
+environments. There is also a question of how readable your code is if you're
+writing 200 character lines.
+
+*Recommendation*: Limit line length to 80 characters unless it will seriously 
+impact readability
+
+**Usings**
+
+*Rule*: unrequired using statements should be deleted
+*Rule*: using statements should be sorted according to the default Visual
+Studio sort order.
+
+This just makes it easier to see what is being included in the file. The right
+click menu in VS provides an option to do this automatically for you.
+
+*Rule*: using declarations should be placed within the files namespace 
+declaration.
+
+This is to avoid the following bug:
+
+```csharp
+// File1.cs
+using System;
+
+namespace Outer.Inner
+{
+  class Foo
+  {
+    public void Bar()
     {
-      class Foo
-      {
-        static void Bar()
-        {
-          double d = Math.PI;
-        }
-      }
+      double d = Math.PI;
     }
+  }
+}
 
-    // File2.cs
-    namespace Outer
+// File2.cs
+namespace Outer
+{
+  class Math
+  {
+    public static double PI = 314.0;
+  }
+}
+```
+
+The compiler searches for the definition of entities starting in the current
+namespace and works its way outwards. Thus it will search for Math.PI in Outer 
+before it looks in the global namespace and so will find the value of 314.0.
+
+```csharp
+// File1b.cs
+namespace Outer.Inner
+{
+  using System;
+
+  class Foo
+  {
+    static void Bar()
     {
-      class Math
-      {
-        public static double PI = 314.0;
-      }
+      double d = Math.PI;
     }
+  }
+}
+```
 
-    The compiler will search for Math.PI in Outer before it looks in the global
-    namespace and so will find the value of 314.0.
+Now the compiler searches System before it searches outer and so finds the
+correct value. It's not a problem that's we're likely to encounter but it
+would be hellish to debug if we did so why ask for trouble.
 
-    // File1b.cs
-    namespace Outer.Inner
-    {
-      using System;
-      class Foo
-      {
-        static void Bar()
-        {
-          double d = Math.PI;
-        }
-      }
-    }
+<http://stackoverflow.com/questions/125319/should-using-statements-be-inside-or-outside-the-namespace>
 
-    Now the compiler searches System before it searches outer and so finds the
-    correct value. It's not a problem that's we're likely to encounter but it
-    would be hellish to debug if we did so why ask for trouble.
-    <http://stackoverflow.com/questions/125319/should-using-statements-be-inside-or-outside-the-namespace>
-  ordering
-    
-  remove unused
+###Classes
+
+**Nested Types**
+
+*Recommendation* avoid using nested types.
+
+Break encapsulation
+Add complexity
+
+**Enums**
+
+*Rule*: Do not use the word Enum as either a prefix of suffix for the name. An
+enum should provide an abstraction over a set of values and this is leaking how
+the abstraction is implemented.
+*Rule*: use singular names for enums, it reads more naturally when the enum is
+used.
+
+```csharp
+enum Colour  { Red, Green, Blue};
+enum Colours { Red, Green, Blue};
+
+public void PaintItRed ()
+{
+  // Singular name reads better here
+  screen.Paint(Colour.Red);
+  screen.Paint(Colours.Red);
+}
+```
+
 regions
   minimise number of them
 Interfaces
@@ -876,6 +1159,7 @@ Interfaces
   prefix all of their interfaces like this and consistency is more important
 Classes
   length
+    avoid prefixes or suffixes like _ m_
   order of members
     order by visibility
     order statics then normal
@@ -886,18 +1170,21 @@ Classes
   single responsibility
   naming
   LSP
+###Methods
 Methods
-  Tell don't ask
   Express intention (don't optimise prematurely)
   length
   Don't change parameters
   Avoid unessary temporaries
   no defaults at boundries
+###Variables
 Variables
+    camelCase for variables
   Use Var if you can
+    no hungarian
   Avoid arrays when there is an appropriate collection
   Avoid primatives if there is a better level of abstration available
-Exceptions
+###Exceptions
   Define top level exceptions for libraries and have all other exceptions in
   that lib derive from it
   Dont have empty catch blocks
