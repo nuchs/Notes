@@ -804,6 +804,7 @@ value are interchangeable hence their identity does not matter.
 aliasing
 
 ### Inheritance
+TODO
     prefer composition
     design for it or prohibit
     (GOF, Joshua Bloch)
@@ -907,19 +908,127 @@ The code becomes harder to test because you no longer isolate the client code
 from its dependency on the Singleton and by the same logic the code becomes
 harder to reuse.
 
-**static variables**
+**static members**
 
-In the worst case (when they are public and mutable) static variables are plain
-global variables and should be avoided at all costs.
+Static memebers occupy a strange place in C#, they are not a object orientated
+concept:
 
-In the best case
+1. They are not polymorphic
 
-*Recommendation*: Avoid using mutable static variables whereever possible
+* Static members cannot be accessed from an instance reference, they must
+  always be accessed via the class name
+* Static members cannot be part of an interface
+* Static members cannot be virtual
 
-**static methods**
+Thus they are always accessed in the same way i.e they are monomorphic
 
-if you must use them make them pure
-Static methods are essentially procedural programming
+2. Static members do not play nicely with inheritance. As stated above they
+   cannot be virtual and so cannot be overridden, they can also behave in non
+   obvious ways.
+
+```csharp
+public class Parent
+{
+  public static int number = 1;
+}
+
+public class Child : Parent
+{
+  static Child () { number = 2; }
+}
+
+class Program
+{
+  static void Main ( string[] args )
+  {
+    Console.WriteLine("Parent number is: " + Parent.number);
+    Console.WriteLine("Child number is: " + Child.number);
+    var runStaticConstructor = new Child();
+    Console.WriteLine("Now Child number is: " + Child.number);
+
+    // Outputs
+    // Parent number is: 1
+    // Child number is: 1
+    // Now Child number is: 2
+  }
+}
+```
+
+3. They weaken or break encapsulation. 
+
+Static methods provide a way to modify the behaviour of an object without going
+through the object's (as opposed to class's) interface. This means that objects
+cannot be reasoned about in isolation. An example of where this causes problems
+is in testing.
+
+```csharp
+class Multiplier
+{
+  private static coefficient = 2;
+
+  public void SetCoefficient (int value) { coefficient = value; }
+  public int Multiply(int value) { return value * coefficient; }
+}
+
+class TestMultiplier
+{
+  [Test]
+  settingTheCoefficientShouldChangeTheValueTheMultiplierMultipliesBy ()
+  {
+    var sut = new Multiplier();
+    sut.SetCoefficient(3);
+    Assert.That(sut.Multiply(2), Is.EqualTo(6));
+  }
+
+  [Test]
+  theDefaultCoefficientShouldBeTwo ()
+  {
+    var sut = new Multiplier();
+    Assert.That(sut.Multiply(2), Is.EqualTo(4));
+  }
+}
+```
+
+What will happen in the above code is the second test might fail as the order
+that the tests run is not deterministic, it is up to the testing framework.
+That means that the test might always pass, then fail when you upgrade the
+framework, it might intermittently fail or worst of all it might always pass
+and you would never realise you had a bug.
+
+So if static members are OO then what are they? 
+
+* Static methods are procedural code.
+* Static fields are a form of global state 
+
+Using procedural code is not inherantly wrong but it is worth considering that
+C# is an object oriented language with a smattering of support for other
+styles. If you're not writing in an OO style then you're going against the
+grain of the language, losing all of the benefits it gives you (and if you
+don't think those benefits are worth it then perhaps you should consider using
+a different language).
+
+A static method is often a hint that the is an object waiting to be born that
+will fulfil the responsibilites of that method.
+
+*Recommendation*: Do not make a method static just because it does not access
+an instance variable.
+*Recommendation*: Avoid using static methods if there is acceptable alternative
+*Recommendation*: As the code base grows look to see if new classes can be
+introduced which can take over the responsibilities of existing static methods.
+
+As noted static fields are global state, and thus have all the problems that
+global variables do (With the exception of namespace collisions, as the class
+name effectively acts as a namespace). The problems can be mitagted somewhat by
+reducing the access level of the field and by making the field immutable.
+
+A private constant static field only introduces a light amount of coupling
+between all the instances of a class but as soon as the field is mutable you
+get problems like in the example above and things like threading become an
+order of magnitude more complex.
+
+*Rule*: Do not use public mutable static fields
+*Recommendation*: Do not use mutable static fields or non private
+immutable static fields.
 
 ## Techniques
 
@@ -979,24 +1088,33 @@ information
     sut
     fast
     repeatable
-  Continuous Integration
-  TDD
-  Code Reviews
-  Pair Programming
-## Code Smells
+### TDD
 
-   "a code smell is a surface indication that usually corresponds to a deeper
-   problem in the system" <fowler>
-  Comments
-    A bit of a controversial one, it's no so much that the comments themselves
-    are rather the fact that you need them to explain what the code is doing,
-    you could consider them deoderent <fowler>. Examples of comments which are
-    fine are those describing the interface to something
-    Avoid comments which describe what a line is doing they are just noise
-    Write them using proper English
-    Write the comment you would like to read if you were someone else
-  Long class
-  Long Method
+### Continuous Integration
+
+
+### Code Reviews
+
+### Pair Programming
+
+Pair programming takes the idea that code reviews are good and cranks that up a
+notch so that your code is being constantly reviewed. You do this by developing
+in pairs with one typing and the other watching and commenting. The roles
+should regularly switch throughout the session and the produced code should be
+a collaberative effort.
+
+Some of the benefits
+
+* With two eyes on the code you are less likely to make mistakes
+* You are more likely to follow the guidelines and less likely to take
+  shortcuts with someone watching you
+* It is a great way to share knowledge amongst the team
+* It increases the sense of ownership in the team (No more, "Oh the UI is Bob's
+  code")
+
+*Suggestion*: Give it a try and see if it works for you.
+
+(Kent Beck XP Explained)
 
 ## Style
 
@@ -1082,8 +1200,8 @@ is describes what something is, not what it does).
    purpose of the item.
 2. At the start of each public or protected method or property, a short
    description of the purpose of the item.
-3. Optinally a comment can also appear at the start of each internal method or
-   property.
+
+*Recommendation*: Do not put XML comments
 
 This minimizes the amount of noise introduced by the comments while still
 providing enough useful information to have documentation automatically
@@ -1108,8 +1226,8 @@ restricting yourself to 80 characters will make it display correctly in most
 environments. There is also a question of how readable your code is if you're
 writing 200 character lines.
 
-*Recommendation*: Limit line length to 80 characters unless it will seriously 
-impact readability
+*Consider*: Limit line length to 80 characters unless it will seriously impact
+readability
 
 **Regions**
 
@@ -1153,7 +1271,7 @@ namespace Outer.Inner
 {
   class Foo
   {
-    public void Bar()
+    void Bar()
     {
       double d = Math.PI;
     }
@@ -1163,7 +1281,7 @@ namespace Outer.Inner
 // File2.cs
 namespace Outer
 {
-  class Math
+  public class Math
   {
     public static double PI = 314.0;
   }
@@ -1182,7 +1300,7 @@ namespace Outer.Inner
 
   class Foo
   {
-    static void Bar()
+    void Bar()
     {
       double d = Math.PI;
     }
@@ -1275,6 +1393,22 @@ class MyClass
 
 ###Methods
 
+**Parameters**
+
+*Recommendation*: Try to minimise the length of parameter lists, the more
+parameters a method has the harder it is to understand.
+*Recommendation*: Avoid boolean parameters, they don't provide any useful
+information when reading code containing calls to the method.
+
+```csharp
+
+// Lots of parameters, lots of booleans, lots of fun working out what they're
+// all for
+Excel.Workbook excelWorkbook = excelApp.Workbooks.Open(workbookPath,
+        0, false, 5, "", "", false, Excel.XlPlatform.xlWindows, "",
+        true, false, 0, true, false, false);
+```
+
 **Spacing**
 
 *Rule* There should be one space between the method name and the opening 
@@ -1304,6 +1438,11 @@ public void AnotherMethod ()
 
 There are many perfectly valid styles that could be used, one has been chosen
 purely to ensure consistency across the code base.
+
+**Vertical Length**
+
+TODO: Short and sweet
+
 
 ### Fields, Properites, Parameters and Variables
 
